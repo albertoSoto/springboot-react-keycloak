@@ -1,3 +1,5 @@
+server:
+  port: ${SPRINGBOOT_PORT:8081}
 spring:
   application:
     name: movies-api
