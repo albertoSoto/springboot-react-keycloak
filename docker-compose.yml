@@ -63,6 +63,8 @@ services:
   mongodb:
     image: mongo:5.0.5
     container_name: web-mongodb
+    volumes:
+      - ./docker/mongo/data:/data/db
     networks:
       - whalenet
     ports:
@@ -89,39 +91,46 @@ services:
     healthcheck:
       test: "mysqladmin ping -u root -p$${MYSQL_ROOT_PASSWORD}"
       start_period: 10s
-
-  keycloak:
-    image: jboss/keycloak:16.1.0
-    container_name: web-keycloak
-    networks:
-      - whalenet
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.kc.rule=Host(`dev.tomcat`) && PathPrefix (`/auth`)"
-      - "traefik.http.routers.kc.entrypoints=web"
-      - "traefik.http.routers.kc.entrypoints=websecure"
-      - "traefik.http.routers.kc.tls=true"
-      - "traefik.http.services.whoami-service.loadbalancer.server.port=8080"
-    environment:
-      - KEYCLOAK_USER=admin
-      - KEYCLOAK_PASSWORD=admin
-      - DB_VENDOR=mysql
-      - DB_ADDR=mysql
-      - DB_USER=keycloak
-      - DB_PASSWORD=password
-      - JDBC_PARAMS=useSSL=false
+#
+#  keycloak:
+##    image: jboss/keycloak:16.1.0
+#    build: ./docker/kc
+##      args:
+##        KEYCLOAK_VERSION: ${KEYCLOAK_VERSION:-16.1.0}
+#    container_name: web-keycloak
+#    networks:
+#      - whalenet
+#    labels:
+#      - "traefik.enable=true"
+#      - "traefik.http.routers.kc.rule=Host(`dev.tomcat`) && PathPrefix (`/auth`)"
+#      - "traefik.http.routers.kc.entrypoints=web"
+#      - "traefik.http.routers.kc.entrypoints=websecure"
+#      - "traefik.http.routers.kc.tls=true"
+#      - "traefik.http.services.whoami-service.loadbalancer.server.port=8080"
+#    environment:
+#      - JAVA_OPTS_APPEND="-Dkeycloak.profile.feature.upload_scripts=enabled -Xms1g -Xmx2g"
+###      - JAVA_OPTS_APPEND="-Dkeycloak.profile.feature.upload_scripts=enabled -Xms$JVM_XMS -Xmx$JVM_XMX"
+###      - ENV JVM_XMS=1g
+##        ENV JVM_XMX=2g
 #      - KEYCLOAK_USER=admin
 #      - KEYCLOAK_PASSWORD=admin
-      - KEYCLOAK_LOGLEVEL=DEBUG
-      - JGROUPS_DISCOVERY_PROTOCOL=JDBC_PING
-#      - "JGROUPS_DISCOVERY_PROPERTIES=datasource_jndi_name=java:jboss/datasources/KeycloakDS,info_writer_sleep_time=500"
-    ports:
-      - "8080:8080"
-    depends_on:
-      - mysql
-    healthcheck:
-      test: "curl -f http://localhost:8080/auth || exit 1"
-      start_period: 60s
+#      - DB_VENDOR=mysql
+#      - DB_ADDR=mysql
+#      - DB_USER=keycloak
+#      - DB_PASSWORD=password
+#      - JDBC_PARAMS=useSSL=false
+##      - KEYCLOAK_USER=admin
+##      - KEYCLOAK_PASSWORD=admin
+#      - KEYCLOAK_LOGLEVEL=DEBUG
+#      - JGROUPS_DISCOVERY_PROTOCOL=JDBC_PING
+##      - "JGROUPS_DISCOVERY_PROPERTIES=datasource_jndi_name=java:jboss/datasources/KeycloakDS,info_writer_sleep_time=500"
+#    ports:
+#      - "8080:8080"
+#    depends_on:
+#      - mysql
+#    healthcheck:
+#      test: "curl -f http://localhost:8080/auth || exit 1"
+#      start_period: 60s
 networks:
   whalenet:
     #external: false

@@ -3,6 +3,10 @@
 - Docker
 - mkcert
 
+== Clear data
+
+Swipe data from docker/mongo/data & docker/mysql/data for a clean install
+
 == Launch
 
 Go to docker-compose up -d
