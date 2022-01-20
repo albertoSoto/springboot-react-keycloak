@@ -1,7 +1,7 @@
 version: "3.8"
 
 services:
-  #http://localhost:8079/dashboard/#/
+  # http://localhost:8079/dashboard/#/
   web-traefik:
     image: "traefik:v2.4"
     container_name: "web-traefik"
@@ -28,6 +28,7 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "./docker/certs-traefik.yaml:/etc/traefik/dynamic/certs-traefik.yaml"
       - "./docker/certs/:/etc/certs/"
+  # https://dev.test/
   whoami:
     image: "traefik/whoami"
     container_name: "web-whoami"
@@ -46,6 +47,7 @@ services:
       - "traefik.http.routers.whoami.tls=true"
       # Send traffic to the container via port 8080
       #- "traefik.http.services.whoami-service.loadbalancer.server.port=8080"
+  # https://dev.tomcat/
   tomcat:
     image: "traefik/whoami"
     container_name: "web-tomcat"
@@ -69,49 +71,57 @@ services:
       test: echo 'db.stats().ok' | mongo localhost:27017/moviesdb --quiet
       start_period: 10s
 #
-#  mysql:
-#    image: mysql:8.0.28
-#    platform: linux/x86_64
-#    container_name: web-mysql
-#    networks:
-#      - whalenet
-#    ports:
-#      - "3307:3306"
-#    environment:
-#      - MYSQL_DATABASE=keycloak
-#      - MYSQL_USER=keycloak
-#      - MYSQL_PASSWORD=password
-#      - MYSQL_ROOT_PASSWORD=root_password
-#    healthcheck:
-#      test: "mysqladmin ping -u root -p$${MYSQL_ROOT_PASSWORD}"
-#      start_period: 10s
+  mysql:
+    image: mysql:8.0.28
+    platform: linux/x86_64
+    container_name: web-mysql
+    volumes:
+      - ./docker/mysql/data:/var/lib/mysql
+    networks:
+      - whalenet
+    ports:
+      - "3307:3306"
+    environment:
+      - MYSQL_DATABASE=keycloak
+      - MYSQL_USER=keycloak
+      - MYSQL_PASSWORD=password
+      - MYSQL_ROOT_PASSWORD=root_password
+    healthcheck:
+      test: "mysqladmin ping -u root -p$${MYSQL_ROOT_PASSWORD}"
+      start_period: 10s
 
-#
-#  keycloak:
-#    image: jboss/keycloak:16.1.0
-#    container_name: web-keycloak
-#    networks:
-#      - whaleservice
-#    environment:
+  keycloak:
+    image: jboss/keycloak:16.1.0
+    container_name: web-keycloak
+    networks:
+      - whalenet
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.kc.rule=Host(`dev.tomcat`) && PathPrefix (`/auth`)"
+      - "traefik.http.routers.kc.entrypoints=web"
+      - "traefik.http.routers.kc.entrypoints=websecure"
+      - "traefik.http.routers.kc.tls=true"
+      - "traefik.http.services.whoami-service.loadbalancer.server.port=8080"
+    environment:
+      - KEYCLOAK_USER=admin
+      - KEYCLOAK_PASSWORD=admin
+      - DB_VENDOR=mysql
+      - DB_ADDR=mysql
+      - DB_USER=keycloak
+      - DB_PASSWORD=password
+      - JDBC_PARAMS=useSSL=false
 #      - KEYCLOAK_USER=admin
 #      - KEYCLOAK_PASSWORD=admin
-#      - DB_VENDOR=mysql
-#      - DB_ADDR=mysql
-#      - DB_USER=keycloak
-#      - DB_PASSWORD=password
-#      - JDBC_PARAMS=useSSL=false
-#      - KEYCLOAK_USER=admin
-#      - KEYCLOAK_PASSWORD=admin
-#      - KEYCLOAK_LOGLEVEL=DEBUG
-#      - JGROUPS_DISCOVERY_PROTOCOL=JDBC_PING
-#      - JGROUPS_DISCOVERY_PROPERTIES=datasource_jndi_name=java:jboss/datasources/KeycloakDS,info_writer_sleep_time=500
-#    ports:
-#      - "8080:8080"
-#    depends_on:
-#      - mysql
-#    healthcheck:
-#      test: "curl -f http://localhost:8080/auth || exit 1"
-#      start_period: 60s
+      - KEYCLOAK_LOGLEVEL=DEBUG
+      - JGROUPS_DISCOVERY_PROTOCOL=JDBC_PING
+#      - "JGROUPS_DISCOVERY_PROPERTIES=datasource_jndi_name=java:jboss/datasources/KeycloakDS,info_writer_sleep_time=500"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+    healthcheck:
+      test: "curl -f http://localhost:8080/auth || exit 1"
+      start_period: 60s
 networks:
   whalenet:
     #external: false
