@@ -1,10 +1,37 @@
 version: "3.8"
 
 services:
-
+  web-traefik:
+    image: "traefik:v2.4"
+    container_name: "mgnl-traefik"
+    command:
+      - "--log.level=DEBUG"
+      - "--api"
+      - "--api.dashboard"
+      - "--api.insecure=true"   # Don't do this in production
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entryPoints.websecure.address=:443"
+      - "--entryPoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entryPoints.web.http.redirections.entryPoint.scheme=https"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+    # Generic headers: https://doc.traefik.io/traefik/v2.4/middlewares/headers/
+    networks:
+      - servicenet
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8079:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./docker/certs-traefik.yaml:/etc/traefik/dynamic/certs-traefik.yaml"
+      - "./docker/certs/:/etc/certs/"
   mongodb:
-    image: mongo:4.4.6
+    image: mongo:5.0.5
     container_name: mongodb
+    networks:
+      - servicenet
     ports:
       - "27017:27017"
     healthcheck:
@@ -12,8 +39,11 @@ services:
       start_period: 10s
 
   mysql:
-    image: mysql:5.7.34
+    image: mysql:8.0.28
+    platform: linux/x86_64
     container_name: mysql
+    networks:
+      - servicenet
     ports:
       - "3307:3306"
     environment:
@@ -26,8 +56,10 @@ services:
       start_period: 10s
 
   keycloak:
-    image: jboss/keycloak:14.0.0
+    image: jboss/keycloak:16.1.0
     container_name: keycloak
+    networks:
+      - servicenet
     environment:
       - KEYCLOAK_USER=admin
       - KEYCLOAK_PASSWORD=admin
@@ -42,4 +74,9 @@ services:
       - mysql
     healthcheck:
       test: "curl -f http://localhost:8080/auth || exit 1"
-      start_period: 20s
+      start_period: 60s
+networks:
+  servicenet:
+    #external: false
+    name: service_net
+    driver: bridge
